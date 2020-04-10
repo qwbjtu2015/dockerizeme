@@ -1,5 +1,5 @@
 {
-  "name": "dockerizeme",
+  "name": "dockerizetools",
   "version": "1.0.0",
   "description": "Given a code snippet and dependency tree, generate a Dockerfile to run code.",
   "main": "src/index.js",
