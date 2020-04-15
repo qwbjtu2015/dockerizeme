@@ -54,7 +54,17 @@ def parse_method_call_tokens(snippet):
     except SyntaxError:
         imports = []
         calls = []
-
+    
+    imps = set(imports)
+    for imp in imports:
+        cols = imp.split(".")
+        res = []
+        if len(cols) > 1:
+            for idx in range(len(cols)):
+                res.append(cols[idx])
+                imps.add(".".join(res))
+    imports = list(imps)
+    imports.sort()
     # Return
     return {'imports': imports, 'calls': calls}
 
@@ -95,7 +105,6 @@ def main():
 
     # Get command line arguments
     opts, args = getopt.getopt(sys.argv[1:], '', [])
-
     # Generate absolute path name
     if not args:
         raise Exception('Usage: python parse.py <filename>')

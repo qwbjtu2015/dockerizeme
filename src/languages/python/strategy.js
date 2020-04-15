@@ -43,7 +43,7 @@ class PythonStrategy extends LanguageStrategy {
      *
      * @returns {String} Docker image version.
      */
-    get imageVersion() { return '2.7.13'; }
+    get imageVersionParser() { return path.resolve(__dirname, 'version.py') }
 
     /**
      * Name for the language's default package management system.

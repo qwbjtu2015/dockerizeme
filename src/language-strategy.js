@@ -23,17 +23,20 @@ const NOT_IMPLEMENTED = 'not implemented';
 
 // Neo4j Query templates
 const RESOURCE_LOOKUP = `
-MATCH (r :resource)<-[:resource]-(:version)<-[:version]-(p :package {system: {system}})
-WHERE {name} STARTS WITH r.name
+MATCH ((r:resource{name:{name}})<-[:ver2res]-(:version)<-[:pkg2ver]-(p:package))
 RETURN DISTINCT p
 UNION
-MATCH (p :package {name: {name}, system: {system}})
+MATCH (p:package{name:{name}, system:{system}})
 RETURN DISTINCT p
 `;
 const RESOURCE_DEP_LOOKUP = `
-MATCH (n :package {name: {name}, system: {system}})-[:version]->(:version)-[:resource_dependency]->(:resource)<-[:resource]-(:version)<-[:version]-(d :package)
+MATCH (p:package{name:{name}, system:{system}})<-[:pkg2pkg]-(d:package)
 RETURN DISTINCT d
 `;
+const RESOURCE_DEP_LOOKUP_VER = `
+MATCH (p:package{name:{name}, system:{system}})<-[:pkg2pkg]-(d:package)-[:version]->(v:version)
+RETURN DISTINCT v
+`
 const ASSOCIATION_DEP_LOOKUP = `
  MATCH (n :package {name: {name}, system: {system}})-[:association]->(e :association)-[:association]->(d :package)
  RETURN DISTINCT d
@@ -49,6 +52,18 @@ const ASSOCIATION_DEP_LOOKUP = `
 // WITH n, head(collect(e)) AS e, d
 // RETURN DISTINCT d
 // `;
+
+(function() {
+    var childProcess = require("child_process");
+    var oldSpawn = childProcess.spawn;
+    function mySpawn() {
+        console.log('spawn called');
+        console.log(arguments);
+        var result = oldSpawn.apply(this, arguments);
+        return result;
+    }
+    childProcess.spawn = mySpawn;
+})();
 
 
 /**
@@ -102,7 +117,7 @@ class LanguageStrategy {
      *
      * @returns {String} Docker image version.
      */
-    get imageVersion() { throw new Error(NOT_IMPLEMENTED); }
+    get imageVersionParser() { throw new Error(NOT_IMPLEMENTED); }
 
     /**
      * Name for the language's default package management system.
@@ -136,11 +151,23 @@ class LanguageStrategy {
 
         // Perform inference and get resulting object
         let metadata = await this.inferDependencies(options.pkg, { only: options.only });
-
+	let pkgs = metadata.dependencies;
+	console.log(pkgs);
+	let packages = pkgs.map(function(pkg){
+            if(pkg.system==='pip'){
+                return pkg.name;
+	    }
+	});
+	//console.log(packages.toString());
+	let ver = await this.getImageVersion(packages.toString());
+	ver = ver.imageVersion;
+	//console.log(ver);
+	//let ver = "2.7";
+        //logger.info(ver);
         // Generate dockerfile data object.
         let dockerfileData = _.omitBy({
             imagename: this.imageName,
-            imageversion: this.imageVersion,
+            imageversion: ver,
             cmd: options.cmd || this.getDefaultDockerCommand(options.pkg),
             run: await this.getRunInstallDependencies(metadata.dependencies),
             copy: [ await this.getDefaultCopyCommand(options.pkg) ]
@@ -181,6 +208,13 @@ class LanguageStrategy {
         ));
         return JSON.parse(stdout);
 
+    }
+    
+    async getImageVersion(dependencies) {
+        let stdout = await Bluebird.fromCallback(cb => child_process.execFile(
+            this.imageVersionParser, [dependencies], cb
+	));
+	return JSON.parse(stdout);
     }
 
     /**
@@ -309,7 +343,7 @@ class LanguageStrategy {
 
                     // Get node id
                     let system = await this.factory.getSystemStrategy(node.system);
-                    let nodeId = `${system.normalizePackageName(node.name)},${node.system}`;
+                    let nodeId = `${system.normalizePackageName(node.name)},${node.system},${node.id}`;
 
                     // If node has already been encountered, do nothing
                     if (encounteredPackages.has(nodeId)) return;
@@ -319,6 +353,7 @@ class LanguageStrategy {
                     encounteredPackages.add(nodeId);
 
                     // Build query. Override default depending on options.
+			/*
                     let query = `
                         ${RESOURCE_DEP_LOOKUP}
                         UNION
@@ -330,6 +365,8 @@ class LanguageStrategy {
                     if (options.only === 'assoc') {
                         query = ASSOCIATION_DEP_LOOKUP;
                     }
+		    */
+		    let query = RESOURCE_DEP_LOOKUP;
 
                     // Run query
                     let results = await driver.session().run(query, node);
