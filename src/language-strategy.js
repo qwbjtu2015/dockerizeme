@@ -152,7 +152,6 @@ class LanguageStrategy {
         // Perform inference and get resulting object
         let metadata = await this.inferDependencies(options.pkg, { only: options.only });
 	let pkgs = metadata.dependencies;
-	console.log(pkgs);
 	let packages = pkgs.map(function(pkg){
             if(pkg.system==='pip'){
                 return pkg.name;
