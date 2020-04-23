@@ -271,7 +271,7 @@ class LanguageStrategy {
                 if (!results.records.length) {
 		    logger.info('Could not perform a reverse package lookup for resource:', d);
 		}else if (results.records.length>2) {
-		    logger.erroe('More than two results in lookup for resource:', d);
+		    logger.error('More than two results in lookup for resource:', d);
 		}else if(results.records.length==2) {
 		    let first = results.records[0].get('p').properties;
 		    let second = results.records[1].get('p').properties;
@@ -288,6 +288,9 @@ class LanguageStrategy {
                     let p = record.get('p').properties;
                     logger.info(`Reverse lookup for ${d} matched package:`, p);
 
+		    //dockerizetools
+		    importPackages.push({"name":p.name, "system":p.system});
+		    /*
                     // Get package management system strategy
                     let system = await this.factory.getSystemStrategy(p.system);
 
@@ -301,12 +304,15 @@ class LanguageStrategy {
                     else {
                         logger.info('Package system could not find package', p);
                     }
+		    */
 
                 }));
 
                 // If the package queue does not contain a package with an exact name match,
                 // this might just be because of an incomplete database. Defer to the system
                 // of record. If found, push to the package queue.
+		// dockerizetools cancel resolve
+		/*
                 if (!_.some(importPackages, params)) {
                     logger.info('No exact match in database for resource:', d);
                     let system = await this.factory.getSystemStrategy(this.system);
@@ -322,6 +328,7 @@ class LanguageStrategy {
                     // resolution. Remove it. We only want to count cases where the names do not match.
                     inferenceData.directDependencies.nameResolutions--;
                 }
+		*/
 
             }));
 
@@ -394,6 +401,7 @@ class LanguageStrategy {
 
                     }
 
+		    /*
                     // Normalize and add to dependencies
                     let match = await system.searchForExactPackageMatch(node.name);
                     if (match) {
@@ -404,6 +412,8 @@ class LanguageStrategy {
                             inferenceData.transitiveDependencies.items.push(match);
                         }
                     }
+		    */
+		    dependencies.push({"name":node.name, "system": node.system});
 
                 }).bind(this)(root);
 

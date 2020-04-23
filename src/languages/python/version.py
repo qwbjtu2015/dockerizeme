@@ -16,6 +16,8 @@ def convert_ver_number(ver):
         return int(ver.replace('.',''))
 
 def get_version(versions):
+    if not versions:
+        return "2.7"
     min = 2.7
     max = 3.8
     target = None
