@@ -40,9 +40,9 @@ def get_version(versions):
     return ".".join(list(str(v)))
 
 def get_image_version(pkgs):
-    #uri = "bolt://60.245.211.161:7687"
+    uri = "bolt://60.245.211.161:7687"
     pkgs = pkgs.strip().split(',')
-    uri = "bolt://localhost:7687"
+    #uri = "bolt://localhost:7687"
     driver = GraphDatabase.driver(uri, auth=("neo4j", "password"))
     versions = []
     with driver.session() as session:
