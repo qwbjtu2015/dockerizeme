@@ -23,11 +23,11 @@ const NOT_IMPLEMENTED = 'not implemented';
 
 // Neo4j Query templates
 const RESOURCE_LOOKUP = `
-MATCH ((r:resource{name:{name}})<-[:ver2res]-(:version)<-[:pkg2ver]-(p:package))
-RETURN DISTINCT p
-UNION
 MATCH (p:package{name:{name}, system:{system}})
-RETURN DISTINCT p
+RETURN p
+UNION
+MATCH ((r:resource{name:{name}})<-[:ver2res]-(:version)<-[:pkg2ver]-(p:package{system:{system}}))
+RETURN p ORDER BY p.rank DESC LIMIT 1
 `;
 const RESOURCE_DEP_LOOKUP = `
 MATCH (p:package{name:{name}, system:{system}})<-[:pkg2pkg]-(d:package)
@@ -130,7 +130,7 @@ class LanguageStrategy {
      * Construct a Neo4j driver for connecting to the database.
      */
     getNeo4jDriver() {
-        return neo4j.driver('bolt://localhost:7687');
+        return neo4j.driver('bolt://60.245.211.161:7687');
     }
 
     /**
@@ -268,8 +268,19 @@ class LanguageStrategy {
                 // Search the database, looking for any package resources with a substring match
                 // and any packages with an exact name match. Union and return distinct packages.
                 let results = await driver.session().run(RESOURCE_LOOKUP, params);
-                if (!results.records.length) logger.info('Could not perform a reverse package lookup for resource:', d);
-
+                if (!results.records.length) {
+		    logger.info('Could not perform a reverse package lookup for resource:', d);
+		}else if (results.records.length>2) {
+		    logger.erroe('More than two results in lookup for resource:', d);
+		}else if(results.records.length==2) {
+		    let first = results.records[0].get('p').properties;
+		    let second = results.records[1].get('p').properties;
+		    if (first.rank >= second.rank){
+			results.records.splice(1,1);
+		    }else{
+			results.records.splice(0,1);
+		    }
+		}
                 // Push discovered packages to the package queue
                 await Bluebird.all(_.map(results.records, async (record) => {
 
